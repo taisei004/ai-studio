@@ -2,6 +2,10 @@
 
 AI STUDIOに必要なのはGoogleログインのopenid/email/profileのみ。Google Cloudの課金アカウント、Gmail/Driveのアクセス権限、サービスアカウントの鍵は不要。
 
+専用プロジェクト: `AI STUDIO`（`spatial-iris-512114-q1`）。既存プロジェクトの`now`クライアントとは分離する。
+
+2026-10-20: Web OAuthクライアント作成、公開URLのみのリダイレクト登録、Worker Secretsへの設定、実Googleログイン/ログアウトとD1保存を確認済み。Google側の表示はExternal / Testingで作成し、その後の変更はしていない。基本identityスコープ（openid/email/profile）のみの場合はテスト利用者リスト制限の例外となる（[Google公式](https://developers.google.com/identity/protocols/oauth2/production-readiness/overview)）。ブランド審査は未実施で、Googleの同意画面にはアプリ名の代わりにドメインが表示される。Googleコンソールの対象設定画面は断続的な読み込みエラーがあり、本番ステータスへの切り替えは未実施。
+
 ## 確認する順序
 
 1. Google Cloud Consoleに、管理したいGoogleアカウントでログインする。

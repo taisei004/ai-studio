@@ -194,6 +194,24 @@ function App() {
         <Skeleton />
       </MotionConfig>
     );
+  if (!state && error && (!session || session.user))
+    return (
+      <div className="login-shell">
+        <section className="login-panel glass">
+          <div className="app-mark">
+            <Icon name="office" size={27} />
+          </div>
+          <h1>AI STUDIO</h1>
+          <h2>接続を確認してください</h2>
+          <p className="inline-error" role="alert">
+            データを取得できませんでした。再読み込みしてください。
+          </p>
+          <Button icon="retry" onClick={load}>
+            再読み込み
+          </Button>
+        </section>
+      </div>
+    );
   if (!state)
     return (
       <div className="login-shell">
@@ -228,7 +246,7 @@ function App() {
             </svg>
             Googleでログイン
           </a>
-          {!session?.googleConfigured && (
+          {session && !session.googleConfigured && (
             <p className="login-configuration">
               Google認証の設定を準備中です。
             </p>
