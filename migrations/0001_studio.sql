@@ -1,0 +1,13 @@
+PRAGMA foreign_keys=ON;
+CREATE TABLE users (id TEXT PRIMARY KEY, email TEXT NOT NULL, name TEXT NOT NULL, picture TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE sessions (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at INTEGER NOT NULL);
+CREATE INDEX sessions_expiry ON sessions(expires_at);
+CREATE TABLE projects (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', deadline TEXT NOT NULL DEFAULT '', template TEXT NOT NULL DEFAULT 'program', created_at TEXT NOT NULL);
+CREATE INDEX projects_user ON projects(user_id);
+CREATE TABLE agents (id TEXT NOT NULL, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, name TEXT NOT NULL, role TEXT NOT NULL, specialty TEXT NOT NULL, instructions TEXT NOT NULL DEFAULT '', color TEXT NOT NULL, PRIMARY KEY(user_id,id));
+CREATE TABLE tasks (id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, agent_id TEXT NOT NULL, title TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'idle' CHECK(status IN ('idle','working','review','done','error')), position INTEGER NOT NULL, run_id TEXT, run_started INTEGER, revision TEXT NOT NULL DEFAULT '');
+CREATE INDEX tasks_project ON tasks(project_id);
+CREATE TABLE artifacts (id TEXT PRIMARY KEY, task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE, title TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE TABLE approvals (id TEXT PRIMARY KEY, task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE, artifact_id TEXT NOT NULL REFERENCES artifacts(id) ON DELETE CASCADE, status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','held','approved','revision')), comment TEXT NOT NULL DEFAULT '');
+CREATE TABLE logs (id TEXT PRIMARY KEY, task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE, message TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE TABLE usage (user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, day TEXT NOT NULL, kind TEXT NOT NULL, count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(user_id,day,kind));

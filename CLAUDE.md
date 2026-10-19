@@ -1,5 +1,5 @@
-# Claude Code への引き継ぎ
+# Claude Code
 
-AGENTS.mdを共通ルールとし、README.mdとdocs/HANDOFF.mdから開始してください。
-製品の決定事項はdocs/DISCUSSION.mdとdocs/PRODUCT.md、設計はdocs/ARCHITECTURE.mdを参照。
-現在のモードはモック。実AIの認証方式・利用条件を確認後、Researcher一人の実行から接続してください。
+AGENTS.mdの共通ルールに従う。README.md、docs/HANDOFF.md、docs/PRODUCT.md、docs/ARCHITECTURE.md、docs/TECH_CHOICES.md、docs/TESTING.mdを読む。
+現行版はPC Web / Liquid Glass / 部屋による所在 / Cloudflare Workers・D1・Workers AI / Googleのみの認証。旧ローカルモックに戻さない。
+変更後にpnpm test・pnpm buildを実行し、UIは実ブラウザーで確認。テストのスタブと実サービス接続の検証を区別する。

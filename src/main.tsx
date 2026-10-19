@@ -1,42 +1,794 @@
-import React,{useEffect,useState} from 'react';
-import {createRoot} from 'react-dom/client';
-import type {State,Project,Task,Agent} from '../shared/domain.ts';
-import {progress,agentStatus,statusLabels} from '../shared/domain.ts';
-import {Office} from './office/Office';
-import './styles.css';
-const nav=[['office','▦','オフィス'],['projects','▤','案件管理'],['agents','♙','AI社員'],['approvals','▱','承認ボックス'],['artifacts','▧','成果物'],['settings','⚙','設定']];
-async function api(action?:string,input:Record<string,unknown>={}){const r=await fetch(action?'/api/action':'/api/state',action?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,...input})}:{});const data=await r.json();if(!r.ok)throw Error(data.error);return data as State;}
-function App(){
- const [state,setState]=useState<State|null>(null),[view,setView]=useState('office'),[projectId,setProjectId]=useState(''),[agentId,setAgentId]=useState('agent-1'),[error,setError]=useState(''),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[projectForm,setProjectForm]=useState<Partial<Project>|null>(null),[editAgent,setEditAgent]=useState(false),[comment,setComment]=useState(''),[message,setMessage]=useState(''),[artifactId,setArtifactId]=useState<string|null>(null),[deleteId,setDeleteId]=useState<string|null>(null);
- useEffect(()=>{api().then(setState).catch(e=>setError(e.message));},[]);
- async function act(action:string,input:Record<string,unknown>,success='保存しました'){setBusy(true);setError('');try{const s=await api(action,input);setState(s);setNotice(success);return true;}catch(e){setError((e as Error).message);return false;}finally{setBusy(false);}}
- if(!state)return <main className="loading"><div className="brand-icon">✦</div><h1>AI STUDIO</h1><p>{error||'小さなオフィスを準備しています…'}</p>{error&&<button onClick={()=>location.reload()}>再読み込み</button>}</main>;
- const project=state.projects.find(p=>p.id===projectId)??state.projects[0];const tasks=state.tasks.filter(t=>t.projectId===project?.id).sort((a,b)=>a.order-b.order);const selected=state.agents.find(a=>a.id===agentId)??state.agents[0];const ownTasks=tasks.filter(t=>t.agentId===selected.id);const status=agentStatus(ownTasks);const current=ownTasks.find(t=>['working','review','error'].includes(t.status))??ownTasks.find(t=>t.status==='idle')??ownTasks[0];
- const pending=state.approvals.filter(a=>['pending','held'].includes(a.status));const title=nav.find(n=>n[0]===view)?.[2];
- function download(title:string,content:string){const url=URL.createObjectURL(new Blob([content],{type:'text/markdown;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=title.replace(/[<>:"/\\|?*]/g,'-')+'.md';a.click();URL.revokeObjectURL(url);}
- function taskActions(task:Task){return <div className="task-actions">{['idle','error'].includes(task.status)&&<button disabled={busy} onClick={()=>act('start',{id:task.id},'モック作業を開始しました')}>▷ 開始</button>}{task.status==='working'&&<><button className="primary" disabled={busy} onClick={()=>act('finish',{id:task.id},'モック成果物が承認ボックスに届きました')}>成果物を作成</button><button disabled={busy} onClick={()=>act('fail',{id:task.id},'エラー状態に変更しました')}>エラー検証</button></>}{task.status==='review'&&<button onClick={()=>setView('approvals')}>承認を確認 →</button>}</div>;}
- const timeline=<section className="panel workflow"><div className="section-heading"><div><span className="eyebrow">WORKFLOW</span><h2>制作の道のり</h2></div><span className="muted">{tasks.filter(t=>t.status==='done').length} / {tasks.length} 工程</span></div><div className="steps">{tasks.map((t,i)=><div key={t.id} className={`step ${t.status}`}><span className="step-num">{t.status==='done'?'✓':String(i+1).padStart(2,'0')}</span><strong>{t.title}</strong><small>{statusLabels[t.status]}</small></div>)}</div></section>;
- return <div className="shell"><aside className="sidebar"><a href="#" className="brand" onClick={e=>{e.preventDefault();setView('office');}}><span className="brand-icon">✦</span><span>AI STUDIO<small>YOUR CREATIVE OFFICE</small></span></a><div className="workspace-name"><span className="workspace-mark">T</span><div>マイスタジオ<small>パーソナルワークスペース</small></div><span>⌄</span></div><span className="nav-caption">WORKSPACE</span><nav>{nav.map(([id,icon,label])=><button key={id} className={view===id?'active':''} onClick={()=>{setView(id);setEditAgent(false);}}><span>{icon}</span>{label}{id==='approvals'&&pending.length>0&&<b className="count">{pending.length}</b>}</button>)}</nav><div className="sidebar-bottom"><div className="mock-indicator"><i/> MOCK MODE</div><p>今日は、どんなアイデアを<br/>かたちにしよう？</p><span className="version">AI STUDIO / v0.1</span></div></aside>
- <div className="main-shell"><header className="topbar"><span>マイスタジオ <span className="slash">/</span> <b>{title}</b></span><div className="top-actions"><span className="local"><i/> ローカル環境</span><button aria-label="承認通知" onClick={()=>setView('approvals')}>♧ {pending.length>0&&<b>{pending.length}</b>}</button><div className="avatar">T</div></div></header>
- <main><div className="page-heading"><div><div className="eyebrow">{view==='office'?'A LITTLE OFFICE. BIG IDEAS.':'YOUR CREATIVE WORKSPACE'}</div><h1>{view==='office'?'おかえりなさい、ディレクター。':title}</h1><p>{view==='office'?'アイデアが、かたちになる場所。今日もチームと一緒に。':'チームの仕事を確認し、次の一歩を決めましょう。'}</p></div><button className="primary" onClick={()=>setProjectForm({name:'',description:'',deadline:''})}>＋ 新しい案件</button></div>
- {error&&<div className="banner error" role="alert">{error}<button onClick={()=>setError('')}>閉じる</button></div>}{notice&&<div className="banner" role="status">✓ {notice}<button onClick={()=>setNotice('')}>閉じる</button></div>}
- <div className="stats"><div><span>進行中の案件</span><strong>{state.projects.length}<small>PROJECTS</small></strong></div><div><span>チームメンバー</span><strong>{state.agents.length}<small>AI MEMBERS</small></strong></div><div><span>承認を待つ書類</span><strong>{pending.length.toString().padStart(2,'0')}<small>IN YOUR INBOX</small></strong></div><div><span>選択案件の進捗</span><strong>{progress(tasks)}<em>%</em><span className="mini-bar"><i style={{width:`${progress(tasks)}%`}}/></span></strong></div></div>
- {(view==='office'||view==='projects')&&<div className="project-strip"><div><span className="project-symbol">▣</span><div><small>CURRENT PROJECT</small><select aria-label="表示案件" value={project?.id??''} onChange={e=>setProjectId(e.target.value)}>{!state.projects.length&&<option value="">案件を作成してください</option>}{state.projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div></div>{project&&<span className="muted">{project.deadline?`期限 ${project.deadline}`:'期限未設定'} <button className="text-btn" onClick={()=>setProjectForm(project)}>編集 ↗</button></span>}</div>}
- {view==='office'&&<><div className="office-layout"><section className="panel office-panel"><div className="section-heading"><div><span className="eyebrow">THE OFFICE</span><h2>わたしたちの制作室 <span className="live-badge"><i/> OPEN</span></h2></div><span className="muted">社員をクリックして話しかける</span></div><Office agents={state.agents} tasks={tasks} selected={selected.id} onSelect={setAgentId}/><div className="office-legend"><span><b className="dot working"/>作業中</span><span><b className="dot review"/>承認待ち</span><span><b className="dot idle"/>待機中</span><small>明示操作で進むモックオフィス</small></div></section>
- <aside className="panel member-detail"><div className="section-heading"><span className="eyebrow">TEAM MEMBER</span><button className="text-btn" onClick={()=>setEditAgent(true)}>編集 ↗</button></div><div className="member-avatar" style={{background:selected.color}}>♙</div><h2>{selected.name}</h2><p className="muted">{selected.role}</p><span className={`status ${status}`}><i className={`dot ${status}`}/>{statusLabels[status]}</span><div className="detail-separator"/><span className="eyebrow">CURRENT TASK</span><h3>{current?.title??'新しい仕事を待っています'}</h3><p className="muted detail-copy">{selected.specialty}</p>{current&&taskActions(current)}<div className="detail-separator"/><span className="eyebrow">ACTIVITY</span><div className="activity">{state.logs.filter(l=>ownTasks.some(t=>t.id===l.taskId)).slice(-3).reverse().map(l=><p key={l.id}><i/>{l.message}</p>)}{!state.logs.some(l=>ownTasks.some(t=>t.id===l.taskId))&&<p><i/>まだ作業記録はありません。最初の仕事を始めましょう。</p>}</div>{current&&<form onSubmit={async e=>{e.preventDefault();if(await act('message',{id:current.id,message},'指示を作業ログへ保存しました'))setMessage('');}}><label htmlFor="message" className="eyebrow">DIRECTION</label><div className="message-box"><input id="message" placeholder="チームに指示を残す…" value={message} onChange={e=>setMessage(e.target.value)}/><button aria-label="指示を保存" disabled={busy||!message.trim()}>↑</button></div><small className="muted">モックではログへの保存のみ行います。</small></form>}</aside></div>{timeline}<div className="bottom-note"><span>✦ ひとりのアイデアを、チームの力で。</span><span>すべてのデータはこのPCに保存されます。</span></div></>}
- {view==='projects'&&<>{project?<><section className="panel content-panel"><div className="section-heading"><div><span className="eyebrow">PROJECT BRIEF</span><h2>{project.name}</h2></div><button className="danger" onClick={()=>setDeleteId(project.id)}>案件を削除</button></div><p>{project.description||'概要はまだありません。'}</p></section>{timeline}<section className="panel content-panel"><h2>タスク</h2>{tasks.map(t=><div className="task-row" key={t.id}><div><strong>{t.title}</strong><small>{state.agents.find(a=>a.id===t.agentId)?.name}</small></div><span className={`status ${t.status}`}>{statusLabels[t.status]}</span>{taskActions(t)}</div>)}</section></>:<Empty text="最初の案件を作成しましょう。"/>}</>}
- {view==='agents'&&<div className="agent-grid">{state.agents.map(a=>{const at=state.tasks.filter(t=>t.agentId===a.id);return <button className="panel agent-card" key={a.id} onClick={()=>{setAgentId(a.id);setEditAgent(true);}}><div className="member-avatar" style={{background:a.color}}>♙</div><h2>{a.name}</h2><p>{a.role}</p><span className={`status ${agentStatus(at)}`}>{statusLabels[agentStatus(at)]}</span><p className="muted">{a.specialty}</p><small>プロフィールを編集 ↗</small></button>;})}</div>}
- {view==='approvals'&&<section className="panel content-panel"><span className="eyebrow">ON YOUR DESK</span><h2>書類が届いています <span className="muted">/ {pending.length} 件</span></h2>{!pending.length&&<Empty text="承認待ちの書類はありません。社員の作業を開始し、モック成果物を作成すると届きます。"/>}{pending.map(a=>{const t=state.tasks.find(t=>t.id===a.taskId)!;const output=state.artifacts.filter(f=>f.taskId===t.id).at(-1);return <article className="approval-card" key={a.id}><div className="section-heading"><div><small className="muted">{state.projects.find(p=>p.id===t.projectId)?.name} / {state.agents.find(x=>x.id===t.agentId)?.name}</small><h3>▱ {t.title}</h3></div><span className="status review">{a.status==='held'?'保留中':'確認をお願いします'}</span></div><pre className="artifact-preview">{output?.content}</pre><label>修正内容・コメント<textarea placeholder="修正依頼にはコメントが必要です" value={comment} onChange={e=>setComment(e.target.value)}/></label><div className="button-row"><button className="primary" disabled={busy} onClick={async()=>{if(await act('approve',{id:a.id,comment},'承認しました。次の工程を開始できます'))setComment('');}}>✓ 承認する</button><button disabled={busy} onClick={async()=>{if(await act('revise',{id:a.id,comment},'修正を依頼しました'))setComment('');}}>修正を依頼</button><button disabled={busy} onClick={()=>act('hold',{id:a.id,comment},'書類を保留しました')}>保留する</button></div></article>;})}</section>}
- {view==='artifacts'&&<section className="panel content-panel"><span className="eyebrow">MADE BY YOUR TEAM</span><h2>成果物ライブラリ</h2>{!state.artifacts.length&&<Empty text="成果物はまだありません。モック作業を完了するとここに保存されます。"/>}{state.artifacts.map(f=><div className="task-row" key={f.id}><div><strong>{f.title}</strong><small>{state.projects.find(p=>p.id===state.tasks.find(t=>t.id===f.taskId)?.projectId)?.name} · {new Date(f.createdAt).toLocaleString('ja-JP')}</small></div><button onClick={()=>setArtifactId(f.id)}>開く ↗</button><button onClick={()=>download(f.title,f.content)}>保存 ↓</button></div>)}</section>}
- {view==='settings'&&<section className="panel content-panel settings"><span className="eyebrow">STUDIO SETTINGS</span><h2>スタジオについて</h2><div className="setting-row"><b>実行モード</b><span className="status working">MOCK / 実AI未接続</span></div><div className="setting-row"><b>データ保存</b><span>ローカル SQLite / data/studio.sqlite</span></div><div className="setting-row"><b>バージョン</b><span>0.1.0</span></div><p className="muted">モデル欄は将来の接続用設定です。現在はすべてモックとして実行します。自動実行・外部送信・API課金はありません。</p><button onClick={()=>download('ai-studio-backup',JSON.stringify(state,null,2))}>データをJSONで書き出す ↓</button></section>}
- </main><footer>AI STUDIO <span>つくる時間を、もっと楽しく。</span><span>LOCAL FIRST · MOCK MODE</span></footer></div>
- {projectForm&&<Modal title={projectForm.id?'案件を編集':'新しい案件をつくる'} onClose={()=>setProjectForm(null)}><form onSubmit={async e=>{e.preventDefault();if(await act(projectForm.id?'editProject':'createProject',projectForm as Record<string,unknown>,'案件を保存しました'))setProjectForm(null);}}><label>案件名<input required maxLength={120} value={projectForm.name} onChange={e=>setProjectForm({...projectForm,name:e.target.value})}/></label><label>概要<textarea value={projectForm.description} onChange={e=>setProjectForm({...projectForm,description:e.target.value})}/></label><label>期限<input type="date" value={projectForm.deadline} onChange={e=>setProjectForm({...projectForm,deadline:e.target.value})}/></label><p className="muted">番組制作テンプレートの7工程・6人のチームで始めます。</p><button className="primary" disabled={busy}>保存する</button></form></Modal>}
- {editAgent&&<Modal title="AI社員のプロフィール" onClose={()=>setEditAgent(false)}><AgentForm key={selected.id} agent={selected} busy={busy} onSave={async input=>{if(await act('editAgent',input))setEditAgent(false);}}/></Modal>}
- {artifactId&&(()=>{const f=state.artifacts.find(a=>a.id===artifactId);return f&&<Modal title={f.title} onClose={()=>setArtifactId(null)}><pre className="artifact-preview">{f.content}</pre><button onClick={()=>download(f.title,f.content)}>Markdownを保存 ↓</button></Modal>;})()}
- {deleteId&&<Modal title="案件を削除" onClose={()=>setDeleteId(null)}><p>「{state.projects.find(p=>p.id===deleteId)?.name}」と関連するタスク・成果物・承認・ログを削除します。</p><div className="button-row"><button onClick={()=>setDeleteId(null)}>キャンセル</button><button className="danger" disabled={busy} onClick={async()=>{if(await act('deleteProject',{id:deleteId},'案件を削除しました'))setDeleteId(null);}}>削除する</button></div></Modal>}
- </div>;
+import React, { useCallback, useEffect, useState } from "react";
+import { createRoot } from "react-dom/client";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import type {
+  Agent,
+  Artifact,
+  Project,
+  ProjectDraft,
+  RoomId,
+  StudioState,
+} from "../shared/studio";
+import { initialAgents, memberStatus, taskProgress } from "../shared/studio";
+import { ApiError, getSession, getState, request, sendAction } from "./lib/api";
+import {
+  Badge,
+  Button,
+  Empty,
+  Icon,
+  Modal,
+  Skeleton,
+  Toast,
+  type IconName,
+} from "./components/ui";
+import { AgentEditor, Inspector, Workflow } from "./components/Inspector";
+import { ProjectComposer } from "./components/ProjectComposer";
+import { Office } from "./office/Office";
+import {
+  AgentsView,
+  ApprovalsView,
+  ArtifactViewer,
+  ArtifactsView,
+  ProjectsView,
+  SettingsView,
+} from "./pages/WorkspaceViews";
+import "./styles.css";
+import "./accessibility.css";
+type View =
+  | "office"
+  | "projects"
+  | "agents"
+  | "approvals"
+  | "artifacts"
+  | "settings";
+const navigation: { id: View; label: string; icon: IconName }[] = [
+  { id: "office", label: "オフィス", icon: "office" },
+  { id: "projects", label: "案件", icon: "projects" },
+  { id: "agents", label: "AIメンバー", icon: "agents" },
+  { id: "approvals", label: "承認ボックス", icon: "approvals" },
+  { id: "artifacts", label: "成果物", icon: "artifacts" },
+  { id: "settings", label: "設定", icon: "settings" },
+];
+function App() {
+  const [state, setState] = useState<StudioState | null>(null),
+    [session, setSession] = useState<Awaited<
+      ReturnType<typeof getSession>
+    > | null>(null),
+    [loading, setLoading] = useState(true),
+    [refreshing, setRefreshing] = useState(false),
+    [view, setView] = useState<View>("office"),
+    [projectId, setProjectId] = useState(""),
+    [agentId, setAgentId] = useState("researcher"),
+    [room, setRoom] = useState<RoomId | null>(null),
+    [composer, setComposer] = useState<{
+      project?: Project;
+      voice?: boolean;
+    } | null>(null),
+    [editing, setEditing] = useState<Agent | null>(null),
+    [deleting, setDeleting] = useState(false),
+    [artifact, setArtifact] = useState<Artifact | null>(null),
+    [busy, setBusy] = useState(false),
+    [notice, setNotice] = useState(""),
+    [error, setError] = useState(""),
+    [query, setQuery] = useState(""),
+    [motionOff, setMotionOff] = useState(
+      () => localStorage.getItem("studio-reduce-motion") === "true",
+    ),
+    [wide, setWide] = useState(false);
+  const clearNotice = useCallback(() => setNotice(""), []),
+    clearError = useCallback(() => setError(""), []);
+  async function load() {
+    setLoading(true);
+    setError("");
+    try {
+      const session = await getSession();
+      setSession(session);
+      if (session.user) setState(await getState());
+      else setState(null);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => {
+    void load();
+  }, []);
+  useEffect(() => {
+    document.documentElement.dataset.reduceMotion = String(motionOff);
+  }, [motionOff]);
+  useEffect(() => {
+    if (!state) return;
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible" && !busy)
+        void getState()
+          .then(setState)
+          .catch((e) => {
+            if (e instanceof ApiError && e.status === 401) {
+              setState(null);
+              void getSession().then(setSession);
+            }
+          });
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [!!state, busy]);
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        document.getElementById("global-search")?.focus();
+      }
+      if (e.key === "Escape") setQuery("");
+    };
+    document.addEventListener("keydown", key);
+    return () => document.removeEventListener("keydown", key);
+  }, []);
+  const act = useCallback(
+    async (
+      action: string,
+      input: Record<string, unknown>,
+      message = "保存しました",
+    ) => {
+      setBusy(true);
+      setError("");
+      if (action === "generate")
+        setState((s) =>
+          s
+            ? {
+                ...s,
+                tasks: s.tasks.map((t) =>
+                  t.id === input.id ? { ...t, runId: "request-pending" } : t,
+                ),
+              }
+            : s,
+        );
+      try {
+        const result = await sendAction(action, input);
+        setState(result.state);
+        if (result.projectId) setProjectId(result.projectId);
+        setNotice(message);
+        return true;
+      } catch (e) {
+        setError((e as Error).message);
+        if (e instanceof ApiError && e.status === 401) void load();
+        else
+          void getState()
+            .then(setState)
+            .catch(() => {});
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [],
+  );
+  async function refresh() {
+    setRefreshing(true);
+    try {
+      setState(await getState());
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+  function selectAgent(id: string) {
+    setAgentId(id);
+    setRoom(null);
+  }
+  function navigate(id: View) {
+    setView(id);
+    setQuery("");
+  }
+  async function logout() {
+    try {
+      await request("/auth/logout", {});
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+  if (loading)
+    return (
+      <MotionConfig reducedMotion="user">
+        <Skeleton />
+      </MotionConfig>
+    );
+  if (!state)
+    return (
+      <div className="login-shell">
+        <div className="login-glow" />
+        <section className="login-panel glass">
+          <div className="app-mark">
+            <Icon name="office" size={27} />
+          </div>
+          <h1>AI STUDIO</h1>
+          <h2>ログイン</h2>
+          <a
+            className={`google-login ${session?.googleConfigured ? "" : "unconfigured"}`}
+            href="/auth/google"
+          >
+            <svg width="19" height="19" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M22.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.3h5.9a5 5 0 0 1-2.2 3.3v2.7h3.6c2.1-1.9 3.2-4.7 3.2-8"
+                fill="#4285F4"
+              />
+              <path
+                d="M12 23c3 0 5.5-1 7.3-2.7l-3.6-2.7c-1 .7-2.2 1-3.7 1-2.9 0-5.4-2-6.3-4.6H2v2.8A11 11 0 0 0 12 23"
+                fill="#34A853"
+              />
+              <path
+                d="M5.7 14a7 7 0 0 1 0-4V7.2H2a11 11 0 0 0 0 9.6z"
+                fill="#FBBC05"
+              />
+              <path
+                d="M12 5.4c1.6 0 3 .6 4.1 1.6l3.1-3.1A10.5 10.5 0 0 0 12 1 11 11 0 0 0 2 7.2L5.7 10C6.6 7.4 9.1 5.4 12 5.4"
+                fill="#EA4335"
+              />
+            </svg>
+            Googleでログイン
+          </a>
+          {!session?.googleConfigured && (
+            <p className="login-configuration">
+              Google認証の設定を準備中です。
+            </p>
+          )}
+          {new URLSearchParams(location.search).has("authError") && (
+            <p className="inline-error" role="alert">
+              ログインできませんでした。設定と利用可能なアカウントをご確認ください。
+            </p>
+          )}
+          {error && (
+            <p className="inline-error" role="alert">
+              {error}
+            </p>
+          )}
+          <Button icon="retry" variant="text" onClick={load}>
+            再読み込み
+          </Button>
+        </section>
+        <span className="login-footer">
+          <Icon name="shield" size={13} />
+          Googleアカウントで認証
+        </span>
+      </div>
+    );
+  const project =
+    state.projects.find((p) => p.id === projectId) ?? state.projects[0];
+  const tasks = state.tasks.filter((t) => t.projectId === project?.id);
+  const selected =
+    state.agents.find((a) => a.id === agentId) ??
+    state.agents[0] ??
+    initialAgents[1];
+  const pending = state.approvals.filter((a) =>
+    ["pending", "held"].includes(a.status),
+  );
+  const title = navigation.find((n) => n.id === view)!.label;
+  const matchingProjects = query.trim()
+    ? state.projects
+        .filter((p) =>
+          (p.name + p.description).toLowerCase().includes(query.toLowerCase()),
+        )
+        .slice(0, 5)
+    : [];
+  const matchingArtifacts = query.trim()
+    ? state.artifacts
+        .filter((f) => f.title.toLowerCase().includes(query.toLowerCase()))
+        .slice(0, 5)
+    : [];
+  return (
+    <MotionConfig reducedMotion={motionOff ? "always" : "user"}>
+      <div className={`app-shell ${wide ? "wide-office" : ""}`}>
+        <div className="ambient-light" />
+        <aside className="sidebar glass">
+          <button className="brand" onClick={() => navigate("office")}>
+            <span className="app-mark">
+              <Icon name="office" size={20} />
+            </span>
+            <span>AI STUDIO</span>
+          </button>
+          <div className="workspace-switch">
+            <span className="workspace-avatar">S</span>
+            <div>
+              <strong>マイワークスペース</strong>
+              <span>Personal workspace</span>
+            </div>
+          </div>
+          <span className="sidebar-label">ワークスペース</span>
+          <nav>
+            {navigation
+              .filter((n) => n.id !== "settings")
+              .map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => navigate(n.id)}
+                  className={view === n.id ? "active" : ""}
+                  aria-current={view === n.id ? "page" : undefined}
+                >
+                  {view === n.id && (
+                    <motion.i
+                      layoutId="nav-pill"
+                      className="nav-pill"
+                      transition={{
+                        type: "spring",
+                        stiffness: 400,
+                        damping: 34,
+                      }}
+                    />
+                  )}
+                  <Icon name={n.icon} size={19} />
+                  <span>{n.label}</span>
+                  {n.id === "approvals" && pending.length > 0 && (
+                    <b>{pending.length}</b>
+                  )}
+                </button>
+              ))}
+          </nav>
+          <div className="sidebar-projects">
+            <div className="section-title">
+              <span>案件</span>
+              <Button
+                icon="plus"
+                title="案件を追加"
+                variant="icon-button"
+                onClick={() => setComposer({})}
+              />
+            </div>
+            {state.projects.slice(0, 5).map((p, i) => (
+              <button
+                key={p.id}
+                className={p.id === project?.id ? "selected" : ""}
+                onClick={() => {
+                  setProjectId(p.id);
+                  navigate("projects");
+                }}
+              >
+                <i
+                  style={{
+                    background: ["#8498c6", "#b597c8", "#8eb9b1", "#c8ad81"][
+                      i % 4
+                    ],
+                  }}
+                />
+                <span>{p.name}</span>
+              </button>
+            ))}
+            {!state.projects.length && (
+              <span className="sidebar-no-projects">未登録</span>
+            )}
+          </div>
+          <div className="sidebar-bottom">
+            <span className="connection">
+              <Icon name="cloud" size={14} />
+              {state.mode === "development" ? "ローカル開発" : "Cloudflare"}
+              <i />
+            </span>
+            <button
+              onClick={() => navigate("settings")}
+              className={view === "settings" ? "active" : ""}
+            >
+              <Icon name="settings" size={19} />
+              <span>設定</span>
+            </button>
+            <div className="account">
+              <span className="avatar user-avatar">
+                {state.user.name.slice(0, 1)}
+              </span>
+              <div>
+                <strong>{state.user.name}</strong>
+                <span>
+                  {state.mode === "development"
+                    ? "開発セッション"
+                    : "Googleアカウント"}
+                </span>
+              </div>
+              {state.mode !== "development" && (
+                <Button
+                  icon="logout"
+                  title="ログアウト"
+                  variant="icon-button"
+                  onClick={() => void logout()}
+                />
+              )}
+            </div>
+          </div>
+        </aside>
+        <div className="workspace-main">
+          <header className="topbar">
+            <div className="breadcrumb">
+              <span>ワークスペース</span>
+              <Icon name="right" size={13} />
+              <strong>{title}</strong>
+            </div>
+            <div className="topbar-right">
+              <div className="global-search">
+                <Icon name="search" size={16} />
+                <input
+                  id="global-search"
+                  aria-label="ワークスペースを検索"
+                  placeholder="検索"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+                <kbd>Ctrl K</kbd>
+                {query && (
+                  <div
+                    className="search-results glass"
+                    role="region"
+                    aria-label="検索結果"
+                  >
+                    {matchingProjects.map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => {
+                          setProjectId(p.id);
+                          navigate("projects");
+                        }}
+                      >
+                        <Icon name="projects" size={16} />
+                        {p.name}
+                      </button>
+                    ))}
+                    {matchingArtifacts.map((f) => (
+                      <button
+                        key={f.id}
+                        onClick={() => {
+                          setArtifact(f);
+                          setQuery("");
+                        }}
+                      >
+                        <Icon name="file" size={16} />
+                        {f.title}
+                      </button>
+                    ))}
+                    {!matchingProjects.length && !matchingArtifacts.length && (
+                      <p>一致する結果はありません</p>
+                    )}
+                  </div>
+                )}
+              </div>
+              <Button
+                icon={refreshing ? "loading" : "retry"}
+                title="データを更新"
+                variant="icon-button"
+                disabled={refreshing}
+                onClick={() => void refresh()}
+              />
+              <button
+                className="notification-button"
+                aria-label="承認通知"
+                onClick={() => navigate("approvals")}
+              >
+                <Icon name="approvals" size={19} />
+                {pending.length > 0 && <i />}
+              </button>
+            </div>
+          </header>
+          <main>
+            <div className="page-heading">
+              <div>
+                <div className="page-context">ワークスペース</div>
+                <h1>{title}</h1>
+              </div>
+              <div className="button-group">
+                <Button
+                  icon="mic"
+                  variant="glass"
+                  onClick={() => setComposer({ voice: true })}
+                >
+                  音声で依頼
+                </Button>
+                <Button
+                  icon="plus"
+                  variant="primary"
+                  onClick={() => setComposer({})}
+                >
+                  新しい案件
+                </Button>
+              </div>
+            </div>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={view}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -5 }}
+                transition={{ duration: 0.2 }}
+                className="page-content"
+              >
+                {view === "office" && (
+                  <>
+                    <div className="office-overview">
+                      <div>
+                        <span className="stat-icon lavender">
+                          <Icon name="projects" size={19} />
+                        </span>
+                        <span>
+                          <small>進行中の案件</small>
+                          <strong>
+                            {
+                              state.projects.filter(
+                                (p) =>
+                                  taskProgress(
+                                    state.tasks.filter(
+                                      (t) => t.projectId === p.id,
+                                    ),
+                                  ) < 100,
+                              ).length
+                            }
+                            <em>件</em>
+                          </strong>
+                        </span>
+                      </div>
+                      <div>
+                        <span className="stat-icon teal">
+                          <Icon name="agents" size={19} />
+                        </span>
+                        <span>
+                          <small>作業中のメンバー</small>
+                          <strong>
+                            {
+                              state.agents.filter(
+                                (a) =>
+                                  memberStatus(
+                                    state.tasks.filter(
+                                      (t) => t.agentId === a.id,
+                                    ),
+                                  ) === "working",
+                              ).length
+                            }
+                            <em>/ {state.agents.length}人</em>
+                          </strong>
+                        </span>
+                        <span className="live-label">
+                          <i />
+                          稼働状況
+                        </span>
+                      </div>
+                      <button onClick={() => navigate("approvals")}>
+                        <span className="stat-icon peach">
+                          <Icon name="approvals" size={19} />
+                        </span>
+                        <span>
+                          <small>承認待ち</small>
+                          <strong>
+                            {pending.length}
+                            <em>件</em>
+                          </strong>
+                        </span>
+                        <Icon name="upRight" size={16} />
+                      </button>
+                    </div>
+                    <div className="office-section-title">
+                      <div className="button-group">
+                        <h2>スタジオ</h2>
+                        <span className="floor-badge">1F</span>
+                      </div>
+                      <div className="button-group">
+                        <div className="project-select">
+                          <Icon name="projects" size={14} />
+                          <select
+                            aria-label="表示する案件"
+                            value={project?.id ?? ""}
+                            onChange={(e) => setProjectId(e.target.value)}
+                          >
+                            {!state.projects.length && (
+                              <option value="">案件未登録</option>
+                            )}
+                            {state.projects.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <Button
+                          icon={wide ? "minimize" : "maximize"}
+                          title={wide ? "詳細パネルを表示" : "オフィスを拡大"}
+                          variant="icon-button"
+                          onClick={() => setWide(!wide)}
+                        />
+                      </div>
+                    </div>
+                    <div className="office-layout">
+                      <Office
+                        agents={state.agents}
+                        tasks={tasks}
+                        selected={room ? "" : selected.id}
+                        onSelect={selectAgent}
+                        onRoomSelect={setRoom}
+                      />
+                      {!wide && (
+                        <Inspector
+                          state={state}
+                          agent={selected}
+                          tasks={tasks}
+                          room={room}
+                          act={act}
+                          busy={busy}
+                          onApprovals={() => navigate("approvals")}
+                          onSelect={selectAgent}
+                          onEdit={() => setEditing(selected)}
+                        />
+                      )}
+                    </div>
+                    {project ? (
+                      <Workflow tasks={tasks} onSelect={selectAgent} />
+                    ) : (
+                      <div className="first-project surface">
+                        <Icon name="projects" size={20} />
+                        <span>
+                          案件を登録すると、メンバーに工程が割り当てられます。
+                        </span>
+                        <Button icon="plus" onClick={() => setComposer({})}>
+                          案件を作成
+                        </Button>
+                      </div>
+                    )}
+                    <section className="recent-section">
+                      <div className="section-title">
+                        <h2>最近の更新</h2>
+                        <Button
+                          variant="text"
+                          icon="right"
+                          onClick={() => navigate("artifacts")}
+                        >
+                          成果物を表示
+                        </Button>
+                      </div>
+                      {state.logs.length ? (
+                        <div className="recent-updates">
+                          {state.logs.slice(0, 3).map((l) => (
+                            <div key={l.id}>
+                              <span className="recent-icon">
+                                <Icon name="clock" size={14} />
+                              </span>
+                              <p>
+                                {l.message}
+                                <small>
+                                  {
+                                    state.tasks.find((t) => t.id === l.taskId)
+                                      ?.title
+                                  }
+                                </small>
+                              </p>
+                              <time>
+                                {new Date(l.createdAt).toLocaleTimeString(
+                                  "ja-JP",
+                                  { hour: "2-digit", minute: "2-digit" },
+                                )}
+                              </time>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="quiet-empty">更新はありません</div>
+                      )}
+                    </section>
+                  </>
+                )}
+                {view === "projects" && (
+                  <ProjectsView
+                    state={state}
+                    selected={project}
+                    onSelect={setProjectId}
+                    onCreate={() => setComposer({})}
+                    onEdit={() => setComposer({ project })}
+                    onDelete={() => setDeleting(true)}
+                    act={act}
+                    busy={busy}
+                    onApprovals={() => navigate("approvals")}
+                  />
+                )}
+                {view === "agents" && (
+                  <AgentsView state={state} onEdit={setEditing} />
+                )}
+                {view === "approvals" && (
+                  <ApprovalsView state={state} act={act} busy={busy} />
+                )}
+                {view === "artifacts" && (
+                  <ArtifactsView state={state} onOpen={setArtifact} />
+                )}
+                {view === "settings" && (
+                  <SettingsView
+                    state={state}
+                    motionOff={motionOff}
+                    onMotionChange={(value) => {
+                      setMotionOff(value);
+                      localStorage.setItem(
+                        "studio-reduce-motion",
+                        String(value),
+                      );
+                    }}
+                    onLogout={() => void logout()}
+                  />
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </main>
+          <footer className="app-footer">
+            <span>
+              <i />
+              {busy
+                ? "処理中"
+                : error
+                  ? "接続を確認してください"
+                  : "すべての変更を保存済み"}
+            </span>
+            <span>
+              AI STUDIO <span>0.2</span>
+            </span>
+          </footer>
+        </div>
+        {composer && (
+          <ProjectComposer
+            saveError={error}
+            project={composer.project}
+            voice={composer.voice}
+            onClose={() => setComposer(null)}
+            onSave={async (draft) => {
+              const ok = await act(
+                composer.project ? "editProject" : "createProject",
+                {
+                  ...draft,
+                  ...(composer.project ? { id: composer.project.id } : {}),
+                },
+                composer.project ? "案件を更新しました" : "案件を作成しました",
+              );
+              if (ok) setComposer(null);
+              return ok;
+            }}
+          />
+        )}
+        {editing && (
+          <AgentEditor
+            agent={editing}
+            onClose={() => setEditing(null)}
+            onSave={async (agent) => {
+              const ok = await act("editAgent", { ...agent });
+              if (ok) setEditing(null);
+              return ok;
+            }}
+          />
+        )}
+        {deleting && project && (
+          <Modal title="案件を削除" onClose={() => setDeleting(false)}>
+            <p className="delete-explanation">
+              「{project.name}
+              」と関連するタスク・書類・成果物・ログを削除します。
+            </p>
+            <div className="dialog-footer">
+              <Button onClick={() => setDeleting(false)}>キャンセル</Button>
+              <Button
+                icon="delete"
+                variant="danger"
+                disabled={busy}
+                onClick={async () => {
+                  if (
+                    await act(
+                      "deleteProject",
+                      { id: project.id },
+                      "案件を削除しました",
+                    )
+                  )
+                    setDeleting(false);
+                }}
+              >
+                削除する
+              </Button>
+            </div>
+          </Modal>
+        )}
+        {artifact && (
+          <ArtifactViewer
+            artifact={artifact}
+            onClose={() => setArtifact(null)}
+          />
+        )}
+        {notice && <Toast message={notice} onClose={clearNotice} />}
+        {error && <Toast message={error} onClose={clearError} error />}
+      </div>
+    </MotionConfig>
+  );
 }
-function AgentForm({agent,busy,onSave}:{agent:Agent;busy:boolean;onSave:(input:Record<string,unknown>)=>void}){const [draft,setDraft]=useState({...agent});return <form onSubmit={e=>{e.preventDefault();onSave(draft);}}>{([['name','名前'],['role','役割'],['specialty','得意分野'],['model','使用モデル（接続前の設定）'],['instructions','カスタム指示']] as const).map(([key,label])=><label key={key}>{label}{key==='instructions'?<textarea value={draft[key]} onChange={e=>setDraft({...draft,[key]:e.target.value})}/>:<input required={key==='name'} value={draft[key]} onChange={e=>setDraft({...draft,[key]:e.target.value})}/>}</label>)}<button className="primary" disabled={busy}>保存する</button></form>;}
-function Empty({text}:{text:string}){return <div className="empty"><span>▱</span><p>{text}</p></div>;}
-function Modal({title,onClose,children}:{title:string;onClose:()=>void;children:React.ReactNode}){const ref=React.useRef<HTMLDialogElement>(null);useEffect(()=>{ref.current?.showModal();},[]);return <dialog ref={ref} onCancel={e=>{e.preventDefault();onClose();}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}><div className="modal-inner"><div className="section-heading"><h2>{title}</h2><button aria-label="閉じる" onClick={onClose}>×</button></div>{children}</div></dialog>;}
-createRoot(document.getElementById('root')!).render(<App/>);
+createRoot(document.getElementById("root")!).render(<App />);

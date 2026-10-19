@@ -1,0 +1,5 @@
+ENVIRONMENT=development
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+# Google Cloud OAuth web client redirect URI:
+# http://localhost:5176/auth/google/callback

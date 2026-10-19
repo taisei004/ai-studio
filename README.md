@@ -1,47 +1,48 @@
 # AI STUDIO
 
-眺めて楽しい、任せて便利なAI制作オフィス。Windows向けローカルWebアプリの初期版です。
+PC用Webアプリ。AIメンバーの所在・案件・タスク・承認・成果物を管理します。
 
-## 起動
+- 会議室、リサーチ室、PCルーム、制作室、レビュー室、ラウンジ。
+- タスク状態に応じたメンバー移動と、部屋・社員の詳細表示。
+- 白基調のLiquid Glassを参考にしたUI。Motionによる画面遷移・移動、全画面スケルトン。
+- フォーム、自然文、録音・音声ファイルによる案件入力。
+- Workers AIの実生成、承認・修正依頼・保留。
+- Cloudflare Workers / D1。ログインはGoogleのみ。
 
-Node.js 24以降、pnpmを使用します。
+公開先: https://ai-studio.now-task.workers.dev
 
-```powershell
-cd C:\Users\taise\Documents\Codex\ai-studio
+## 開発
+
+Node.js 24以降、pnpm 11。
+
+```sh
 pnpm install
+pnpm db:local
+pnpm build
 pnpm dev
 ```
 
-ブラウザーで http://127.0.0.1:5176 を開きます。APIは4317番です。
+http://127.0.0.1:5176 。Workersは4317番。Workers AIはremote bindingで実際のCloudflareアカウントを使用するため、`pnpm exec wrangler login` が必要です。
+ローカル開発セッションはENVIRONMENT=developmentかつlocalhost/127.0.0.1限定。公開先で認証を迂回しません。
 
-```powershell
+## 確認・公開
+
+```sh
 pnpm test
 pnpm build
-pnpm start
+pnpm db:remote
+pnpm exec wrangler deploy
 ```
 
-ビルド後の `pnpm start` は http://127.0.0.1:4317 でアプリを配信します。devとは同時起動しないでください。
+単一テナントの個人用として公開する場合は `ALLOWED_EMAILS` シークレットに利用を許可するメールアドレスを設定します。未設定時はGoogleで認証した利用者ごとに独立したデータを作成します。
+Google設定は [GOOGLE_SETUP.md](docs/GOOGLE_SETUP.md) を参照。秘密情報は `.dev.vars` またはWorkers Secretsに保存し、Gitに含めません。
 
-## 最初の操作
+## 資料
 
-1. Researcherをクリックし「開始」を押す。
-2. 「成果物を作成」でモック書類を承認ボックスへ送る。
-3. 承認ボックスで承認・修正依頼・保留する。
-4. 承認すると進捗が更新され、次工程を開始できる。
-5. 案件管理で各工程を操作する。新規案件、編集、削除に対応。
-
-AI社員のプロフィール編集、指示のログ保存、成果物のMarkdown保存、設定画面からJSON書き出しができます。
-
-**実AIは未接続です。** 時間経過による自動進行はありません。画面の実行はすべて手動モックです。
-
-データは `data/studio.sqlite` に保存しGitから除外します。停止後にdataフォルダーをコピーしてバックアップできます。JSON書き出しは参照用で、インポートは未実装です。
-
-## 開発ドキュメント
-
+- [技術選定と採用理由](docs/TECH_CHOICES.md)
 - [製品仕様](docs/PRODUCT.md)
 - [設計](docs/ARCHITECTURE.md)
-- [開発計画](docs/ROADMAP.md)
+- [検証記録](docs/TESTING.md)
 - [引き継ぎ](docs/HANDOFF.md)
-- [会話の整理](docs/DISCUSSION.md)
 
-オフィスのピクセル表現はPixiJSの図形とCSSで描画しています。外部画像・フォントに依存しません。
+旧v0.1のローカルNode/SQLiteモックコードはserver/と旧テストに履歴参照用で残っています。現行の起動・公開には使いません。旧ローカルDBの自動移行はありません。

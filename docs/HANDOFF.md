@@ -1,43 +1,30 @@
-# 引き継ぎ — 2026-10-19
+# 引き継ぎ v0.2 — 2026-10-19
 
-## 背景
+v0.1から要件変更。現行仕様はPRODUCT.md、技術選定理由はTECH_CHOICES.md、設計はARCHITECTURE.md。
 
-共有会話を基にCodexでv0.1を開始。ユーザーはピクセルアート型を選択済み。10/20以降はClaudeをメイン開発に使う予定。
+## 現状
 
-## 実装済み
+Workers / D1 / Workers AIの構成へ移行。部屋と社員所在、案件CRUD、社員編集、承認・保留・修正、実AI生成、音声ファイル文字起こしと案件案作成を実装。Google OIDC、PKCE、署名検証とサーバーセッションを実装。
+Google Cloudの既存設定はユーザーと一から確認中。実接続完了まではGoogle認証を検証済み扱いにしない。
 
-React/TypeScript/Vite/Tailwind、PixiJSオフィス（図形の床・家具、HTML社員）、6職種、6画面。
-案件CRUD、プロフィール編集、指示ログ、明示操作モック、エラー再試行、承認・修正・保留、成果物履歴・Markdown保存、JSON書き出し。
-Node HTTP API、SQLite保存。前工程の承認を必須にし、完了工程から進捗計算。
+公開URL: https://ai-studio.now-task.workers.dev
+GitHub: https://github.com/taisei004/ai-studio
 
-## 設計判断と制限
+## 開発
 
-- 正確な画像複製ではなく、会話のA案という選択と文章からピクセルオフィスを実装。
-- SQLiteは状態全体を1レコードへ保存。現状の単一ユーザーモックには十分だが、実AIの長時間非同期実行前に改修が必要。
-- 工程は固定・直列。工程別成果物の内容は同じ汎用モック。各承認も1工程として数える。
-- 実モデル未接続。モデル欄の設定変更は保存のみ。指示はログに残し、実AIには送らない。
-- 自動ポーリング、歩行、書類配送演出、自由なタスク追加・割当、JSON復元は未実装。
-- 開発PCのPATHにはnpmがなくpnpmがある。Node 24.19.0を使用。
+pnpm install → pnpm db:local → pnpm build → pnpm dev。
+通常のNode 24。Workers AIはremote binding。旧server/は起動しない。`.wrangler`と`.dev.vars`はGit対象外。
+新規D1は空の案件一覧と6人の社員で開始。旧ローカルデータは自動移行しない。
 
 ## 検証
 
-- `pnpm test`: 2件成功。前工程の制約、保留・修正・再承認、二重承認防止、進捗、エラー再試行、SQLite再オープン、案件削除時の関連データ削除を検証。
-- `pnpm build`: TypeScriptの型チェックとVite本番ビルドが成功。
-- ブラウザー: PixiJS描画、社員選択、モック開始→成果物→承認→進捗14%、次工程開始、新規案件作成→再読み込み→保持→削除を確認。
-- `docs/office-preview.jpg` に画面記録を保存。
-- 動作確認で初期案件の企画リサーチを承認済み、企画承認を作業中にしてある。現在のローカルDBのみの状態であり、新規DBでは全工程待機中。
-- 開発サーバー: http://127.0.0.1:5176 。この実行環境ではサンドボックス内のプロセスにブラウザーが接続できないため、通常環境で起動して確認した。
-- 依存関係は公式npmレジストリから取得。pnpm v11向けにローカルストア・hoisted構成とesbuildビルド許可をpnpm-workspace.yamlに記録。
-- ローカルGitリポジトリを作成。ユーザーのGit署名情報が未設定のため、初期コミットには一時的な作成者 `Codex <codex@local.invalid>` を使用し、ユーザーのグローバル設定は変更しない。GitHubリモートは未設定。
+TESTING.mdに現在の結果・未検証を記録。Miniflare契約テストのモデル応答はスタブ。別途ブラウザーで実Workers AIから生成と文字起こしに成功。
+本番でGoogle認証が未設定の場合、ログイン画面に設定準備中を表示し、データAPIは401となる。公開環境で開発セッションへフォールバックしない。
 
-## 次にすること
+## 制限
 
-1. 起動してオフィスの見た目と操作をユーザーとレビュー。
-2. src/main.tsxの画面をpages/componentsへ切り出す。
-3. SQLite正規化とジョブ実行管理を設計。
-4. Claude提供枠のCLI利用可否、認証・上限を確認。
-5. AgentRunnerを拡張し、Researcherだけの実行→成果物→承認を実装。
+リサーチはモデルの提案（Web検索なし）。タスクはテンプレートから作成した直列工程。音声認識後はフォームの確認が必要。実マイク収録とGoogle認証の本人選択は実機操作が必要。
 
-## Claudeへの最初の依頼文
+## 次の開発者
 
-「このAI STUDIOプロジェクトを引き継いでください。AGENTS.md、README.md、docs/HANDOFF.mdと関連仕様を読み、まずpnpm testとpnpm buildで現状を確認してください。ピクセルオフィスとモック基盤は実装済みです。実AI接続は利用可能な認証方式を確認してから、Researcher一人の企画案作成と承認フローから始めたいです。未実装機能と設計上の制限を確認し、次の実装計画を提示してください。」
+AGENTS.md→README→PRODUCT→ARCHITECTURE→TECH_CHOICES→TESTINGの順に読む。pnpm testとpnpm buildで現状確認。仕様を旧v0.1に戻さない。Google認証の接続状態と公開版を確認してから、未検証項目や次の機能へ進む。

@@ -1,0 +1,219 @@
+/* Keep glass highlights soft while meeting readable contrast for functional text. */
+.map-member { width: 7%; height: 11%; }
+.map-member > * { pointer-events: none; }
+.sidebar-label,
+.sidebar-projects .section-title,
+.page-context,
+.workspace-switch div > span,
+.connection,
+.account div > span,
+.breadcrumb,
+.global-search,
+.global-search > input::placeholder,
+.global-search kbd {
+  color: #778398;
+}
+.workspace-switch strong,
+.sidebar-projects > button,
+.sidebar-bottom > button,
+nav > button {
+  color: #65748b;
+}
+.office-overview small,
+.office-overview em,
+.office-overview > button > svg,
+.live-label {
+  color: #727e90;
+}
+.office-overview strong {
+  color: #44546c;
+}
+.stat-icon.lavender {
+  color: #8174b0;
+}
+.stat-icon.teal {
+  color: #58867f;
+}
+.stat-icon.peach {
+  color: #a37d59;
+}
+.floor-heading,
+.floor-heading > span:first-child,
+.map-statuses,
+.zoom-reset,
+.inspector-top,
+.profile-block p,
+.member-meta > span:last-child,
+.inspector-section > h3,
+.task-project,
+.task-specialty,
+.activity-item p,
+.activity-item time,
+.no-task,
+.direction-form label,
+.direction-input input,
+.direction-input input::placeholder {
+  color: #6e7e94;
+}
+.profile-block h2,
+.inspector-section h4,
+.section-title h2,
+.room-inspector-title {
+  color: #4f617c;
+}
+.map-name {
+  font-size: 9px;
+  color: #536780;
+  border-color: #d5dfe8;
+}
+.room-control {
+  font-size: 10px;
+  color: #60768b;
+}
+.room-count {
+  color: #667e93;
+}
+.map-member.selected .map-name {
+  color: #506aa7;
+}
+.member-meta .badge,
+.badge {
+  font-size: 10px;
+  color: #64738b;
+}
+.badge.working {
+  color: #477b69;
+}
+.badge.review {
+  color: #96733c;
+}
+.badge.done {
+  color: #5b71ad;
+}
+.badge.error {
+  color: #aa5463;
+}
+.flow-step strong,
+.section-title > span,
+.task-complete,
+.recent-updates p,
+.recent-updates p small,
+.recent-updates time,
+.quiet-empty {
+  color: #718198;
+}
+.flow-step.working strong {
+  color: #536e9e;
+}
+.flow-step.done strong {
+  color: #577c6a;
+}
+.step-symbol {
+  color: #6f83a0;
+}
+.map-statuses .status-dot.idle {
+  background: #8d9caf;
+}
+.app-footer {
+  color: #7c8aa0;
+}
+.button.text {
+  color: #6f819c;
+}
+.project-select,
+.project-select select {
+  color: #647b9b;
+}
+.muted {
+  color: #71849e;
+}
+.project-list-item strong,
+.project-description,
+.project-metadata,
+.task-list-row strong,
+.task-list-row small,
+.project-list-item div > span,
+.project-list-item > span,
+.approval-item strong,
+.approval-item small,
+.document-header .muted,
+.document-body,
+.artifact-library td,
+.artifact-library th,
+.file-link,
+.extension,
+.settings-section > h2,
+.setting-row strong,
+.setting-row p,
+.settings-section > .muted,
+.version-note,
+.agent-card > p,
+.agent-specialty,
+.agent-card-status > span:last-child,
+.agent-card-footer {
+  color: #627a9b;
+}
+.project-detail > h2,
+.document-header h2,
+.agent-card > h2 {
+  color: #4e6688;
+}
+.empty-state h3,
+.empty-state p,
+.login-panel h2,
+.login-configuration,
+.dialog-header p,
+.voice-privacy > span,
+.recording-area > span,
+.dialog-footer > .muted,
+label,
+.delete-explanation {
+  color: #7288a5;
+}
+label > input,
+label > textarea,
+label > select {
+  color: #526e94;
+}
+input::placeholder,
+textarea::placeholder {
+  color: #8398b3;
+}
+.dialog-header h2,
+.recording-area > strong {
+  color: #58749b;
+}
+.room-member-row,
+.room-member-row small {
+  color: #657e9e;
+}
+.login-panel h1 {
+  color: #506b92;
+}
+.google-login {
+  color: #506d96;
+}
+@media (max-width: 1200px) {
+  .room-control {
+    font-size: 9px;
+  }
+  .map-name {
+    font-size: 8px;
+  }
+}
+@media (max-width: 800px) {
+  .room-control {
+    font-size: 10px;
+  }
+  .map-name {
+    font-size: 9px;
+  }
+}
+@media (max-width: 560px) {
+  .room-control {
+    font-size: 6px;
+  }
+  .map-name {
+    font-size: 6px;
+  }
+}
